@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+anthropic
+python-dotenv
+jinja2
+python-multipart
+httpx
+# google-generativeai
+google-genai

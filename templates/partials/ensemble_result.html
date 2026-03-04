@@ -1,0 +1,22 @@
+<!-- 앙상블 결과 partial — HTMX가 /ensemble 응답으로 받아 #ensemble-result에 삽입 -->
+{% for agent in agents %}
+<div class="card mb-3">
+  <div class="card-header bg-agent">
+    {% if agent.name == "분석가" %}📊
+    {% elif agent.name == "비평가" %}🔍
+    {% else %}🌱
+    {% endif %}
+    {{ agent.name }}
+  </div>
+  <div class="card-body">
+    <pre>{{ agent.result }}</pre>
+  </div>
+</div>
+{% endfor %}
+
+<div class="card mb-3 border-primary">
+  <div class="card-header bg-summary">🔮 종합 에이전트 최종 분석</div>
+  <div class="card-body">
+    <pre>{{ summary }}</pre>
+  </div>
+</div>
