@@ -2,12 +2,21 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 
 from agents import run_ensemble, run_pipeline
+from memory import forget_old_memories
 
 load_dotenv()
 
-app = FastAPI(title="Multi-Agent Demo")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    forget_old_memories()  # 서버 시작 시 오래된 기억 정리
+    yield
+
+
+app = FastAPI(title="Multi-Agent Demo", lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 
 

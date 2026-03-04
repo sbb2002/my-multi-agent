@@ -13,6 +13,7 @@ load_dotenv()  # .env 파일을 환경변수로 로드
 # Gemini — 무료 티어 제공, aistudio.google.com/apikey에서 발급
 import google.genai as genai
 from google.genai import types
+from memory import save_memory, recall_memory
 
 # genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
@@ -31,11 +32,17 @@ from google.genai import types
 #     return response.content[0].text
 
 # [Gemini 버전]
-async def call_agent(system: str, message: str) -> str:
+async def call_agent(system: str, message: str, topic: str = None) -> str:
     """단일 Gemini 에이전트 호출"""
 
     # Call client
     client = genai.Client()
+
+    # Memory calling
+    memories = recall_memory(client, message, topic=topic) if topic else []
+    if memories:
+        memory_context = "\n".join(f"- {m}" for m in memories)
+        system = f"{system}\n\n[관련 기억]\n{memory_context}\n(참고만 하되, 현재 주제와 무관하다면 무시하세요.)"
 
     # Tools & configs
     grounding_tool = types.Tool(
@@ -53,7 +60,13 @@ async def call_agent(system: str, message: str) -> str:
         config=config
     )
 
-    return response.text
+    result = response.text
+
+    # Save memories
+    if topic:
+        save_memory(client, result[:500], topic=topic, importance=0.8)
+
+    return result
 
 
 # ─── 앙상블 패턴 ─────────────────────────────────────────────────────────────
@@ -76,7 +89,7 @@ async def run_ensemble(topic: str) -> dict:
 
     # 핵심: 3개 에이전트를 동시에 실행
     results = await asyncio.gather(*[
-        call_agent(agent["system"], f"주제: {topic}") for agent in agents
+        call_agent(agent["system"], f"주제: {topic}", topic) for agent in agents
     ])
 
     # 종합 에이전트가 세 결과를 통합
@@ -86,6 +99,7 @@ async def run_ensemble(topic: str) -> dict:
     summary = await call_agent(
         "당신은 여러 관점을 통합하는 종합 에이전트입니다. 분석가, 비평가, 낙관론자의 의견을 균형 있게 종합하여 가장 통찰력 있는 최종 답변을 작성하세요.",
         context,
+        topic
     )
 
     return {
@@ -148,7 +162,7 @@ async def run_pipeline(topic: str) -> AsyncGenerator[str, None]:
             message = context
         else:
             message = f"{context}\n\n---\n지금 당신이 해야 할 작업: {step['name']}\n위 내용을 바탕으로 지금 즉시 작성을 시작하세요."
-        result = await call_agent(step["system"], message)
+        result = await call_agent(step["system"], message, topic)
         safe_result = result.replace('\n', "↵")
         # SSE 형식으로 yield (프론트가 data: 파싱)
         yield f"data: {step['name']}||{safe_result}\n\n"
