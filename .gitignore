@@ -1,0 +1,10 @@
+# Folders
+_old/
+.vscode/
+__pycache__/
+venv/
+memory_db/
+
+# Files
+*.py[cod]
+.env

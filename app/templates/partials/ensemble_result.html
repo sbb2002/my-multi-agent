@@ -1,0 +1,26 @@
+<!-- 앙상블 결과 partial — HTMX가 /ensemble 응답으로 받아 #ensemble-result에 삽입 -->
+{% for agent in agents %}
+<div class="card mb-3">
+  <div class="card-header bg-agent">
+    {% if agent.name == "분석가" %}📊
+    {% elif agent.name == "비평가" %}🔍
+    {% else %}🌱
+    {% endif %}
+    {{ agent.name }}
+  </div>
+  <div class="card-body markdown-body" data-markdown="{{ agent.result | e }}"></div>
+</div>
+{% endfor %}
+
+<div class="card mb-3 border-primary">
+  <div class="card-header bg-summary">🔮 종합 에이전트 최종 분석</div>
+  <div class="card-body markdown-body" data-markdown="{{ summary | e }}"></div>
+</div>
+
+<script>
+  // partial이 삽입된 직후 마크다운 렌더링
+  document.querySelectorAll('.markdown-body[data-markdown]').forEach(el => {
+    el.innerHTML = marked.parse(el.dataset.markdown);
+    el.removeAttribute('data-markdown');
+  });
+</script>
