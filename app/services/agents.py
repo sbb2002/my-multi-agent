@@ -25,11 +25,11 @@ async def call_agent(system: str, message: str) -> str:
     summary = await request_summarization(question=message, answer=answer)
 
     # 요약에 대해 중요도 평가
-    silmilarity = get_similarity(message, summary)
+    similarity = get_similarity(message, summary)
 
     # TODO: 요약의 중요도에 따라 기억하기
-    # 지금은 silmilarity -> importance라고 간주하여 기억하기.
-    save_memory(summary, silmilarity)
+    # 지금은 similarity -> importance라고 간주하여 기억하기.
+    save_memory(summary, similarity)
 
     return answer
 

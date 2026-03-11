@@ -9,7 +9,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # 3. API 키 입력 (.env 파일 열어서)
-# ANTHROPIC_API_KEY=sk-ant-여기에_실제_키_입력
+GEMINI_API_KEY=sk-ant-여기에_실제_키_입력
 
 # 4. 서버 실행
 cd app
