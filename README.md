@@ -1,6 +1,6 @@
 # Overview
 
-![image](assets\mainpage.png)
+![image](assets/mainpage.png)
 
 Gemini-API를 기반으로 하는 커스텀 에이전트 템플릿. \
 다른 프로젝트에서 활용 시 필요에 맞게 떼어쓰도록 구성하였음.
