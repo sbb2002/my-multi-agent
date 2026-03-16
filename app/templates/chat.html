@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body { background: #f8f9fa; }
+
+    /* 채팅창 */
+    #chat-window {
+      height: 600px;
+      overflow-y: auto;
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* 말풍선 공통 */
+    .bubble-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .bubble-wrapper.user  { justify-content: flex-end; }
+    .bubble-wrapper.bot   { justify-content: flex-start; }
+
+    .bubble {
+      max-width: 75%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .bubble.user {
+      background: #0d6efd;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble.bot {
+      background: #f1f3f5;
+      color: #212529;
+      border-bottom-left-radius: 4px;
+    }
+
+    /* 마크다운 스타일 (bot 말풍선 안) */
+    .bubble.bot h1, .bubble.bot h2, .bubble.bot h3 {
+      margin-top: 0.8rem;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .bubble.bot ul, .bubble.bot ol { padding-left: 1.4rem; }
+    .bubble.bot blockquote {
+      border-left: 3px solid #adb5bd;
+      padding-left: 0.8rem;
+      color: #6c757d;
+    }
+    .bubble.bot p { margin-bottom: 0.4rem; }
+    .bubble.bot p:last-child { margin-bottom: 0; }
+
+    /* 아바타 */
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      background: #e9ecef;
+    }
+
+    /* 타이핑 인디케이터 */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 14px;
+      background: #f1f3f5;
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      width: fit-content;
+    }
+
+    .typing-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #adb5bd;
+      animation: typing 1.2s infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30%            { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* 입력창 */
+    #chat-input {
+      border-radius: 24px;
+      padding: 10px 18px;
+      resize: none;
+      overflow: hidden;
+      line-height: 1.5;
+    }
+
+    #send-btn {
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    /* 초기화 버튼 */
+    #clear-btn { font-size: 0.8rem; }
+
+    /* 빈 상태 */
+    #empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #adb5bd;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="container py-5" style="max-width: 760px">
+
+  <!-- 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="fw-bold mb-1">💬 Chatbot</h1>
+      <p class="text-muted mb-0" style="font-size:0.9rem">Gemini 기반 대화형 AI</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/" class="btn btn-outline-secondary btn-sm">← 데모로 돌아가기</a>
+      <button id="clear-btn" class="btn btn-outline-danger btn-sm" onclick="clearChat()">
+        🗑 대화 초기화
+      </button>
+    </div>
+  </div>
+
+  <!-- 채팅창 -->
+  <div id="chat-window">
+    <div id="empty-state">
+      <div style="font-size: 2.5rem">🤖</div>
+      <p>무엇이든 물어보세요!</p>
+    </div>
+  </div>
+
+  <!-- 입력창 -->
+  <div class="d-flex align-items-end gap-2 mt-3">
+    <textarea
+      id="chat-input"
+      class="form-control"
+      rows="1"
+      placeholder="메시지를 입력하세요... (Shift+Enter: 줄바꿈, Enter: 전송)"
+    ></textarea>
+    <button id="send-btn" class="btn btn-primary" onclick="sendMessage()">➤</button>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // ── 상태 ────────────────────────────────────────────────────
+  let history = [];   // [{role: "user"|"bot", content: "..."}]
+  let isWaiting = false;
+
+  // ── 초기화 ──────────────────────────────────────────────────
+  function clearChat() {
+    if (!confirm('대화 내역을 초기화할까요?')) return;
+    history = [];
+    const win = document.getElementById('chat-window');
+    win.innerHTML = `
+      <div id="empty-state">
+        <div style="font-size: 2.5rem">🤖</div>
+        <p>무엇이든 물어보세요!</p>
+      </div>`;
+  }
+
+  // ── 메시지 렌더링 ────────────────────────────────────────────
+  function appendBubble(role, content) {
+    const win = document.getElementById('chat-window');
+
+    // 첫 메시지 시 empty-state 제거
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState) emptyState.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `bubble-wrapper ${role}`;
+
+    if (role === 'bot') {
+      wrapper.innerHTML = `
+        <div class="avatar">🤖</div>
+        <div class="bubble bot markdown-body">${marked.parse(content)}</div>`;
+    } else {
+      wrapper.innerHTML = `
+        <div class="bubble user">${escapeHtml(content)}</div>
+        <div class="avatar">🙂</div>`;
+    }
+
+    win.appendChild(wrapper);
+    win.scrollTop = win.scrollHeight;
+    return wrapper;
+  }
+
+  // ── 타이핑 인디케이터 ────────────────────────────────────────
+  function showTyping() {
+    const win = document.getElementById('chat-window');
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState) emptyState.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'bubble-wrapper bot';
+    wrapper.id = 'typing-wrapper';
+    wrapper.innerHTML = `
+      <div class="avatar">🤖</div>
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>`;
+    win.appendChild(wrapper);
+    win.scrollTop = win.scrollHeight;
+  }
+
+  function hideTyping() {
+    document.getElementById('typing-wrapper')?.remove();
+  }
+
+  // ── XSS 방지 ────────────────────────────────────────────────
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── 전송 ────────────────────────────────────────────────────
+  async function sendMessage() {
+    if (isWaiting) return;
+
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+
+    // 입력창 초기화
+    input.value = '';
+    input.style.height = 'auto';
+
+    // 사용자 말풍선 추가
+    appendBubble('user', message);
+    history.push({ role: 'user', content: message });
+
+    // 타이핑 표시
+    isWaiting = true;
+    document.getElementById('send-btn').disabled = true;
+    showTyping();
+
+    try {
+      const resp = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, history }),
+      });
+
+      const data = await resp.json();
+      hideTyping();
+
+      // 봇 말풍선 추가
+      appendBubble('bot', data.answer);
+      history.push({ role: 'bot', content: data.answer });
+
+    } catch (err) {
+      hideTyping();
+      appendBubble('bot', '⚠️ 오류가 발생했습니다. 다시 시도해주세요.');
+      console.error(err);
+    } finally {
+      isWaiting = false;
+      document.getElementById('send-btn').disabled = false;
+      input.focus();
+    }
+  }
+
+  // ── 입력창 자동 높이 조절 ────────────────────────────────────
+  const input = document.getElementById('chat-input');
+  input.addEventListener('input', function () {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  });
+
+  // ── Enter 전송 / Shift+Enter 줄바꿈 ─────────────────────────
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+</script>
+</body>
+</html>

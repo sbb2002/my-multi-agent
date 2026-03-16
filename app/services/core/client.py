@@ -9,8 +9,14 @@ load_dotenv()
 # Client defines
 gemini_client = genai.Client()
 
-# DB startup
+# Memory DB startup
 db_client = chromadb.PersistentClient(path="./memory_db")
 collection = db_client.get_or_create_collection(
     "agent_memory",
     metadata={"hnsw:space": "cosine"})
+
+# RAG DB startup
+rag_collection = db_client.get_or_create_collection(
+    "rag_documents",
+    metadata={"hnsw:space": "cosine"}
+)

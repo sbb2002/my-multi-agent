@@ -3,6 +3,7 @@ from services.core.loader import load_role
 
 from services.core.client import gemini_client
 from services.core.client import collection
+from services.core.client import rag_collection
 
 
 ############################## Gemini API Requests ##############################
@@ -65,7 +66,7 @@ async def request_summarization(question: str, answer: str):
     return summary
 
 
-############################## DB Requests ##############################
+############################## Memory DB Requests ##############################
 
 # Query to DB
 def query_to_db(embedding: list, top_k: int=3):
@@ -99,3 +100,32 @@ def update_info(id: str, metadata: dict):
         ids=[id],
         metadatas=[metadata]
     )
+
+
+############################## RAG DB Requests ##############################
+def retrieve_rag_context(query: str, top_k:int = 3) -> str:
+    """RAG collection에서 질문과 유사한 문서 청크를 반환하는 메서드."""
+    
+    # Count the document-chunks
+    count = rag_collection.count()
+    if count == 0:
+        return ""
+    
+    # If exists, find similar chunks
+    n = min(top_k, count)
+    embedding = request_embedding(query)
+    results = rag_collection.query(
+        query_embeddings=[embedding],
+        n_results=n
+    )
+
+    chunks = results['documents'][0]
+    metadatas = results['metadatas'][0]
+
+    context_parts = []
+    for chunk, meta in zip(chunks, metadatas):
+        context_parts.append(
+            f"[출처: {meta['source']} / {meta['title']}]\n{chunk}"
+        )
+
+    return "\n\n".join(context_parts)

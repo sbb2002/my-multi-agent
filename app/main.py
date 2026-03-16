@@ -1,15 +1,10 @@
-# General imports
 from contextlib import asynccontextmanager
-from datetime import datetime
-from dotenv import load_dotenv
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 
-# API imports
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-
-# Source imports
-from routers import ens_router, pip_router, mem_router
+# Local imports
+from routers import (
+    ens_router, pip_router, mem_router, ing_router, cha_router)
 from config.dependencies import templates
 
 
@@ -25,9 +20,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Multi-Gemini-Demo", lifespane=lifespan)
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+        "index.html", 
+        {"request": request}
+        )
 
 # Register the routers
 app.include_router(ens_router)
 app.include_router(pip_router)
 app.include_router(mem_router)
+app.include_router(ing_router)
+app.include_router(cha_router)

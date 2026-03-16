@@ -8,3 +8,4 @@ httpx
 # google-generativeai
 google-genai
 chromadb
+pymupdf4llm
